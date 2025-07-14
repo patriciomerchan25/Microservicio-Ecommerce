@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Store</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      background-color: #f5f5f5; /* Fondo claro para toda la página */
+    }
+    h1 { 
+      text-align: center; 
+      color: #333; 
+    }
+    h2 { 
+      margin-top: 0; 
+      color: #444; 
+    }
+    /* Estilos para las secciones */
+    .section { 
+      background-color: white; /* Fondo blanco para cada sección */
+      border: 1px solid #ddd; /* Marco alrededor de la sección */
+      border-radius: 8px; /* Esquinas redondeadas */
+      padding: 20px; 
+      margin-bottom: 20px; /* Sangría entre secciones */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra ligera para profundidad */
+    }
+    .product-item, .cart-item { 
+      margin: 10px 0; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+    }
+    button { 
+      padding: 5px 10px; 
+      cursor: pointer; 
+    }
+    .add-btn { 
+      background-color: #007bff; 
+      color: white; 
+      border: none; 
+      border-radius: 3px; 
+    }
+    .remove-btn { 
+      background-color: #28a745; 
+      color: white; 
+      border: none; 
+      border-radius: 3px; 
+    }
+    .checkout-btn { 
+      background-color: #28a745; 
+      color: white; 
+      border: none; 
+      border-radius: 3px; 
+      padding: 10px 20px; 
+      display: block; /* Hacer que el botón ocupe todo el ancho de la sección */
+      margin: 0 auto; /* Centrar el botón */
+    }
+    .success { 
+      color: green; 
+    }
+    .cart-total { 
+      margin-top: 10px; 
+      font-weight: bold; 
+      text-align: right; /* Alinear el importe a la derecha */
+    }
+    .modal { 
+      display: none; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background-color: rgba(0, 0, 0, 0.5); 
+    }
+    .modal-content { 
+      background-color: white; 
+      margin: 15% auto; 
+      padding: 20px; 
+      border: 1px solid #888; 
+      width: 80%; 
+      max-width: 500px; 
+      text-align: center; 
+    }
+    .close-btn { 
+      color: #aaa; 
+      float: right; 
+      font-size: 28px; 
+      font-weight: bold; 
+      cursor: pointer; 
+    }
+    .close-btn:hover { 
+      color: black; 
+    }
+  </style>
+</head>
+<body>
+  <h1>Online E-Commerce</h1>
+
+  <!-- Sección Products -->
+  <div class="section">
+    <h2>Productos</h2>
+    <div id="productList"></div>
+    <p id="addMessage"></p>
+  </div>
+
+  <!-- Sección Cart -->
+  <div class="section">
+    <h2>Carrito</h2>
+    <div id="cartItems"></div>
+  </div>
+
+  <!-- Sección Checkout -->
+  <div class="section">
+    <h2>Finalizar Compra</h2>
+    <button class="checkout-btn" onclick="checkout()">Comprar</button>
+  </div>
+
+  <!-- Ventana modal -->
+  <div id="orderModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">×</span>
+      <h2>Confirmación del Pedido</h2>
+      <p id="orderMessage"></p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    window.API_TOKEN = 'my-secret-api-token-2025';
+  </script>
+</body>
+</html>

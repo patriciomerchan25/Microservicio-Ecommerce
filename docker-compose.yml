@@ -1,0 +1,86 @@
+version: '3.8'
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    environment:
+      - API_TOKEN=my-secret-api-token-2025
+    depends_on:
+      - catalog
+      - nginx
+
+  catalog:
+    build: ./catalog
+    depends_on:
+      - mongodb
+    ports:
+      - "3001:3001"
+
+  cart:
+    build: ./cart
+    environment:
+      - API_TOKEN=my-secret-api-token-2025
+    depends_on:
+      - catalog
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  order:
+    build: ./order
+    environment:
+      - API_TOKEN=my-secret-api-token-2025
+    depends_on:
+      - cart
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "3002:3002"
+      - "3003:3003"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - cart
+      - order
+
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - mongodb_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  notification:
+    build: ./notification
+    depends_on:
+      - rabbitmq
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  mongodb_data:
