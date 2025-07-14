@@ -47,10 +47,22 @@ services:
       - "3002:3002"
       - "3003:3003"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - cart
       - order
+
+  nginx-backup:
+    image: nginx:latest
+    container_name: nginx-backup
+    ports:
+      - "3004:3004"
+      - "3005:3005"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - cart
+      - order    
 
   mongodb:
     image: mongo:latest

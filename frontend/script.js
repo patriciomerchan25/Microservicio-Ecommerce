@@ -2,30 +2,38 @@
 const API_TOKEN = window.API_TOKEN || 'my-secret-api-token-2025';
 let cart = [];
 
+// === Helper para tolerancia a fallos ===
+async function fetchWithFallback(primaryUrl, backupUrl, options = {}) {
+  try {
+    const res = await fetch(primaryUrl, options);
+    if (!res.ok) throw new Error(`Primary failed with status ${res.status}`);
+    return res;
+  } catch (err) {
+    console.warn(`Fallo primario (${primaryUrl}), intentando con backup...`, err.message);
+    const res = await fetch(backupUrl, options);
+    return res;
+  }
+}
+
 // === Funciones para trabajar con productos ===
 async function loadProducts() {
   const productList = document.getElementById('productList');
   productList.innerHTML = '<p>Cargando productos...</p>';
   try {
     const response = await fetch('http://localhost:3001/products');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const products = await response.json();
-    console.log('Productos cargados:', products);
+
     productList.innerHTML = '';
     if (products.length === 0) {
       productList.innerHTML = '<p>No hay productos disponibles</p>';
       return;
     }
+
     products.forEach(product => {
-      console.log('Product:', product);
-      console.log('Product ID:', product.id, 'Product _id:', product._id);
       const productId = product.id || product._id;
-      if (!productId) {
-        console.error('El producto no tiene un ID válido:', product);
-        return;
-      }
+      if (!productId) return;
+
       const productDiv = document.createElement('div');
       productDiv.className = 'product-item';
       productDiv.innerHTML = `
@@ -36,16 +44,13 @@ async function loadProducts() {
     });
   } catch (error) {
     console.error('Error al cargar products:', error);
-    productList.innerHTML = '<p>Error al cargar products: ' + error.message + '</p>';
+    productList.innerHTML = '<p>Error al cargar productos: ' + error.message + '</p>';
   }
 }
 
 // === Funciones para trabajar con la cesta ===
 async function addToCart(productId, productName, productPrice) {
-  console.log('addToCart called with:', { productId, type: typeof productId }, productName, productPrice);
   const addMessage = document.getElementById('addMessage');
-  console.log('API_TOKEN:', API_TOKEN);
-  console.log('Authorization header:', `Bearer ${API_TOKEN}`);
 
   if (!productId || productId === 'undefined') {
     addMessage.textContent = 'Error: ID del producto no válido';
@@ -54,33 +59,32 @@ async function addToCart(productId, productName, productPrice) {
   }
 
   try {
-    const response = await fetch('http://localhost:3002/cart/add', {
+    const options = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${API_TOKEN}`
       },
       body: JSON.stringify({ productId })
-    });
+    };
+
+    const response = await fetchWithFallback(
+      'http://localhost:3002/cart/add',
+      'http://localhost:3004/cart/add',
+      options
+    );
 
     if (response.ok) {
       const result = await response.text();
       addMessage.textContent = result;
       addMessage.style.color = 'green';
 
-      console.log('Carrito actual:', cart);
-      const existingItem = cart.find(item => {
-        console.log('Comparando:', { itemId: item.id, type: typeof item.id }, { productId, type: typeof productId });
-        return String(item.id) === String(productId);
-      });
+      const existingItem = cart.find(item => String(item.id) === String(productId));
       if (existingItem) {
         existingItem.quantity += 1;
-        console.log('Producto ya en carrito, se incrementa cantidad:', existingItem);
       } else {
         cart.push({ id: productId, name: productName, price: productPrice, quantity: 1 });
-        console.log('Producto nuevo agregado al carrito:', { id: productId, name: productName, price: productPrice, quantity: 1 });
       }
-      console.log('Carrito después de agregar:', cart);
       updateCartDisplay();
     } else {
       const error = await response.text();
@@ -151,25 +155,39 @@ async function checkout() {
       return;
     }
 
-    const response = await fetch('http://localhost:3003/', {
+    const orderOptions = {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${API_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ items })
-    });
-    if (!response.ok) throw new Error('No se pudo completar la compra');
+    };
 
-    const result = await response.json();
+    const orderResponse = await fetchWithFallback(
+      'http://localhost:3003/',
+      'http://localhost:3005/',
+      orderOptions
+    );
+
+    if (!orderResponse.ok) throw new Error('No se pudo completar la compra');
+
+    const result = await orderResponse.json();
     const orderId = result.orderId;
 
-    const clearCartResponse = await fetch('http://localhost:3002/cart/checkout', {
+    const clearOptions = {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${API_TOKEN}`
       }
-    });
+    };
+
+    const clearCartResponse = await fetchWithFallback(
+      'http://localhost:3002/cart/checkout',
+      'http://localhost:3004/cart/checkout',
+      clearOptions
+    );
+
     if (!clearCartResponse.ok) throw new Error('No se pudo limpiar el carrito');
 
     cart = [];
