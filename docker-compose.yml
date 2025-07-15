@@ -28,6 +28,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+  
+  
+  cart-2:
+    build: ./cart
+    container_name: cart-2
+    environment:
+      - API_TOKEN=my-secret-api-token-2025
+    depends_on:
+      - catalog
+
+
 
   order:
     build: ./order
@@ -40,6 +51,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  order-2:
+    build: ./order
+    container_name: order-2
+    environment:
+      - API_TOKEN=my-secret-api-token-2025
+    depends_on:
+      - cart-2    
 
   nginx:
     image: nginx:latest
