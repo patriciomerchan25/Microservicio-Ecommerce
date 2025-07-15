@@ -6,7 +6,10 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect('mongodb://mongodb:27017/catalog', { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect('mongodb://mongo-primary:27017,mongo-secondary:27017,mongo-arbiter:27017/catalog?replicaSet=rs0', { 
+  useNewUrlParser: true, 
+  useUnifiedTopology: true 
+})
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 

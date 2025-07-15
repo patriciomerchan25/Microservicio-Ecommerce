@@ -47,7 +47,10 @@ const authenticateToken = (req, res, next) => {
   next();
 };
 
-mongoose.connect('mongodb://mongodb:27017/orders', { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect('mongodb://mongo-primary:27017,mongo-secondary:27017,mongo-arbiter:27017/orders?replicaSet=rs0', { 
+  useNewUrlParser: true, 
+  useUnifiedTopology: true 
+})
   .then(() => console.log('Order Service: Connected to MongoDB'))
   .catch(err => {
     console.error('Order Service: MongoDB connection error:', err);
