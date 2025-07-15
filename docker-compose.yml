@@ -10,10 +10,21 @@ services:
       - catalog
       - nginx
 
+  nginx:
+    image: nginx:latest
+    ports:
+      - "3002:3002"
+      - "3003:3003"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - cart
+      - order
+
   catalog:
     build: ./catalog
     depends_on:
-      - mongodb
+      - mongo-primary
     ports:
       - "3001:3001"
 
@@ -41,32 +52,41 @@ services:
       timeout: 10s
       retries: 3
 
-  nginx:
-    image: nginx:latest
-    ports:
-      - "3002:3002"
-      - "3003:3003"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+  notification:
+    build: ./notification
     depends_on:
-      - cart
-      - order
+      - rabbitmq
 
-  mongodb:
-    image: mongo:latest
+  mongo-primary:
+    image: mongo
+    container_name: mongo-primary
+    ports:
+      - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongo_primary_data:/data/db
+    command: ["mongod", "--replSet", "rs0"]
+
+  mongo-secondary:
+    image: mongo
+    container_name: mongo-secondary
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_secondary_data:/data/db
+    command: ["mongod", "--replSet", "rs0"]
+
+  mongo-arbiter:
+    image: mongo
+    container_name: mongo-arbiter
+    ports:
+      - "27019:27017"
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
-
-  notification:
-    build: ./notification
-    depends_on:
-      - rabbitmq
 
   prometheus:
     image: prom/prometheus:latest
@@ -83,4 +103,5 @@ services:
       - prometheus
 
 volumes:
-  mongodb_data:
+    mongo_primary_data:
+    mongo_secondary_data:
