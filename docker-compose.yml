@@ -67,6 +67,7 @@ services:
     build: ./notification
     depends_on:
       - rabbitmq
+    restart: always
 
   prometheus:
     image: prom/prometheus:latest
