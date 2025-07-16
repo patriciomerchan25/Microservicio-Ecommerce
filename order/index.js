@@ -39,18 +39,18 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) {
-    return res.status(401).send('Access denied: No token provided');
+    return res.status(401).send('Acceso denegado: No token provided');
   }
   if (token !== API_TOKEN) {
-    return res.status(401).send('Access denied: Invalid token');
+    return res.status(401).send('Acceso denegado: Token inválido');
   }
   next();
 };
 
 mongoose.connect('mongodb://mongodb:27017/orders', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Order Service: Connected to MongoDB'))
+  .then(() => console.log('Servicio de pedidos: Conectado a MongoDB'))
   .catch(err => {
-    console.error('Order Service: MongoDB connection error:', err);
+    console.error('Servicio de pedidos: Error de conexión MongoDB:', err);
     process.exit(1);
   });
 
@@ -65,12 +65,22 @@ async function connectRabbitMQ() {
   try {
     await retry(async () => {
       const conn = await amqp.connect('amqp://rabbitmq');
-      channel = await conn.createChannel();
-      await channel.assertQueue('notifications');
-      console.log('Order Service: Connected to RabbitMQ');
+      channel = await conn.createConfirmChannel(); // ← confirmChannel
+      await channel.assertQueue('notifications', {durable: true});
+      console.log('Servicio de pedidos: Conectado a RabbitMQ');
+
+      // Reconexión automática si se cierra la conexión
+      conn.on('close', () => {
+        console.error('Servicio de pedidos: Conexión RabbitMQ cerrada. Reconectando...');
+        setTimeout(connectRabbitMQ, 5000);
+      });
+
+      conn.on('error', (err) => {
+        console.error('Servicio de pedidos: Error de conexión RabbitMQ:', err.message);
+      });
     }, { retries: 10, minTimeout: 5000 });
   } catch (err) {
-    console.error('Order Service: Failed to connect to RabbitMQ after retries:', err);
+    console.error('Servicio de pedidos: No se pudo conectar a RabbitMQ después de reintentos:', err);
     process.exit(1);
   }
 }
@@ -78,10 +88,25 @@ connectRabbitMQ();
 
 async function sendToRabbitMQ(message) {
   try {
-    await retry(() => channel.sendToQueue('notifications', Buffer.from(message)), { retries: 3 });
-    console.log('Order Service: Sent to RabbitMQ:', message);
+    await retry((bail) => {
+      return new Promise((resolve, reject) => {
+        channel.sendToQueue(
+          'notifications',
+          Buffer.from(message),
+          { persistent: true },
+          (err, ok) => {
+            if (err) {
+              console.error('Servicio de pedidos: Mensaje NO confirmado:', err.message);
+              return reject(err);
+            }
+            console.log('Servicio de pedidos: Mensaje confirmado y enviado:', message);
+            resolve();
+          }
+        );
+      });
+    }, { retries: 3 });
   } catch (err) {
-    console.error('Order Service: Failed to send to RabbitMQ:', err);
+    console.error('Servicio de pedidos: Fallo al enviar mensaje a RabbitMQ tras reintentos:', err.message);
   }
 }
 
@@ -99,26 +124,26 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-  res.send('Order Service is running');
+  res.send('El servicio de pedidos está en marcha');
 });
 
 app.post('/', authenticateToken, async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).send('Invalid items: must be a non-empty array');
+    return res.status(400).send('Elementos no válidos: debe ser una matriz no vacía');
   }
   try {
     const order = new Order({ items });
     await order.save();
-    console.log(`Order Service (${os.hostname()}): Created order with ID:`, order._id);
+    console.log(`Servicio de pedidos (${os.hostname()}): Orden creada con ID:`, order._id);
     await sendToRabbitMQ(`Order ${order._id} created`);
     res.json({ message: 'Order created', orderId: order._id }); // Devuelve el orderId
   } catch (err) {
-    console.error('Order Service: Error creating order:', err);
-    res.status(500).send('Order failed: ' + err.message);
+    console.error('Servicio de pedidos: Error al crear el pedido:', err);
+    res.status(500).send('Pedido fallido: ' + err.message);
   }
 });
 
 app.listen(3003, () => {
-  console.log('Order Service running on port 3003');
+  console.log('Servicio de pedidos en ejecución en el puerto 3003');
 });
